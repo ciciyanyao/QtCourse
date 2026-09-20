@@ -1,0 +1,11 @@
+build/
+*.pro.user
+*.pro.user.*
+.qtcreator/
+*.o
+*.obj
+debug/
+release/
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
