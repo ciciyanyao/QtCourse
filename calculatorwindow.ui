@@ -123,6 +123,12 @@
      </item>
      <item row="0" column="1">
       <widget class="QPushButton" name="btnBackspace">
+       <property name="font">
+        <font>
+         <family>Segoe UI Symbol</family>
+         <pointsize>14</pointsize>
+        </font>
+       </property>
        <property name="minimumSize">
         <size>
          <width>60</width>

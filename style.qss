@@ -1,1 +1,93 @@
-/* 占位样式表，后续阶段完善 */
+/* ============================================================
+ * 计算器样式表
+ * 配色参考 Windows 计算器：浅灰底、白色按键、蓝色运算符与等号
+ * ============================================================ */
+
+/* 窗口整体背景 */
+QWidget#CalculatorWindow {
+    background-color: #F3F4F6;
+}
+
+/* 显示区：白底圆角卡片 */
+QFrame#displayFrame {
+    background-color: #FFFFFF;
+    border: none;
+    border-radius: 10px;
+}
+
+/* 表达式行：灰色小字，右对齐 */
+QLabel#lblExpression {
+    color: #8A8F99;
+    font-family: "Microsoft YaHei UI", "Segoe UI";
+    font-size: 16px;
+}
+
+/* 主显示区：深色大字 */
+QLabel#lblDisplay {
+    color: #1F2328;
+    font-family: "Segoe UI", "Microsoft YaHei UI";
+    font-size: 40px;
+    font-weight: 600;
+}
+
+/* 所有按键的公共样式 */
+QPushButton {
+    background-color: #FFFFFF;
+    border: 1px solid #E3E6EB;
+    border-radius: 8px;
+    color: #1F2328;
+    font-size: 20px;
+}
+
+QPushButton:hover {
+    background-color: #F2F7FD;
+    border-color: #CFE3F7;
+}
+
+QPushButton:pressed {
+    background-color: #DCEBFB;
+}
+
+/* 功能键（C、退格、%、±）：浅灰底、字号小一号 */
+QPushButton[role="function"] {
+    background-color: #F7F8FA;
+    color: #4A5058;
+    font-size: 17px;
+}
+
+QPushButton[role="function"]:hover {
+    background-color: #EDF1F7;
+}
+
+/* 运算符键（÷ × − +）：浅蓝底、蓝字 */
+QPushButton[role="operator"] {
+    background-color: #EAF3FC;
+    color: #1B6FBF;
+    font-size: 22px;
+}
+
+QPushButton[role="operator"]:hover {
+    background-color: #DCEBFB;
+}
+
+/* 等号键：实心蓝、白字，视觉上强调 */
+QPushButton[role="equal"] {
+    background-color: #3B8FE0;
+    border: none;
+    color: #FFFFFF;
+    font-size: 24px;
+}
+
+QPushButton[role="equal"]:hover {
+    background-color: #2F82D2;
+}
+
+QPushButton[role="equal"]:pressed {
+    background-color: #2874BE;
+}
+
+/* 退格键使用符号字体，避免 ⌫ 显示成方块 */
+QPushButton#btnBackspace {
+    font-family: "Segoe UI Symbol";
+    font-size: 19px;
+}
