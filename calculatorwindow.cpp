@@ -5,6 +5,9 @@
 
 namespace {
 
+// 输入位数上限，避免显示区塞进过长数字
+constexpr int kMaxDigits = 16;
+
 // 把运算符转成界面上显示的符号
 QString operatorSymbol(const QString &op)
 {
@@ -43,6 +46,7 @@ CalculatorWindow::CalculatorWindow(QWidget *parent)
     , ui(new Ui::CalculatorWindow)
     , m_display(QStringLiteral("0"))
     , m_isNewInput(true)
+    , m_errorState(false)
 {
     ui->setupUi(this);
 
@@ -53,7 +57,6 @@ CalculatorWindow::CalculatorWindow(QWidget *parent)
     }
 
     refreshDisplay();
-
 }
 
 CalculatorWindow::~CalculatorWindow()
@@ -91,33 +94,63 @@ void CalculatorWindow::handleKey(const QString &key)
 
 void CalculatorWindow::inputDigit(const QString &digit)
 {
+    if (m_errorState) {
+        clearAll(); // 出错后按数字，直接开始一次新的输入
+    }
     if (m_isNewInput) {
         m_display = digit;
         m_isNewInput = false;
-    } else if (m_display == QLatin1String("0")) {
+        return;
+    }
+    if (m_display == QLatin1String("0")) {
         m_display = digit; // 避免出现 05 这样的前导 0
-    } else {
+        return;
+    }
+    if (m_display.size() < kMaxDigits) {
         m_display.append(digit);
     }
 }
 
 void CalculatorWindow::inputDot()
 {
+    if (m_errorState) {
+        clearAll();
+    }
     if (m_isNewInput) {
         m_display = QStringLiteral("0.");
         m_isNewInput = false;
-    } else {
-        m_display.append(QLatin1Char('.'));
+        return;
     }
+    // 同一个操作数只允许有一个小数点：已经存在 '.' 就忽略这次输入。
+    // 这是"连续小数点"问题的处理点，输入 1..2 时第二次 '.' 被丢弃，结果为 1.2
+    if (m_display.contains(QLatin1Char('.'))) {
+        return;
+    }
+    m_display.append(QLatin1Char('.'));
 }
 
 void CalculatorWindow::inputOperator(const QString &op)
 {
+    if (m_errorState) {
+        return; // 错误态只接受"清除"或数字（数字会隐式清零）
+    }
+
+    // 连按两个运算符：只替换待执行的运算符，
+    // 不能拿显示区里残留的操作数再算一次（否则 5 + × 3 会变成 10 × 3）
+    if (m_isNewInput && !m_pendingOp.isEmpty()) {
+        m_pendingOp = op;
+        updateExpression(m_operand + QLatin1Char(' ') + operatorSymbol(op));
+        return;
+    }
+
     if (m_pendingOp.isEmpty()) {
         m_operand = m_display;
     } else {
-        // 已经有运算符：先把前面的算式算出来，实现连续运算
-        const double result = applyOperator(m_pendingOp, m_operand.toDouble(), currentValue());
+        // 已有运算符：先把前面的算式算出来，实现连续运算
+        double result = 0;
+        if (!compute(m_operand.toDouble(), currentValue(), m_pendingOp, &result)) {
+            return;
+        }
         m_display = formatNumber(result);
         m_operand = m_display;
     }
@@ -129,29 +162,44 @@ void CalculatorWindow::inputOperator(const QString &op)
 
 void CalculatorWindow::evaluate()
 {
-    if (m_pendingOp.isEmpty()) {
+    if (m_errorState) {
         return;
+    }
+    if (m_pendingOp.isEmpty()) {
+        return; // 没有待运算的表达式，按 = 不做任何事
     }
 
     const QString lhsText = m_operand;
     const QString rhsText = m_display;
-    const double result = applyOperator(m_pendingOp, m_operand.toDouble(), currentValue());
+    const QString op = m_pendingOp;
 
-    updateExpression(lhsText + QLatin1Char(' ') + operatorSymbol(m_pendingOp)
+    double result = 0;
+    if (!compute(m_operand.toDouble(), currentValue(), op, &result)) {
+        updateExpression(lhsText + QLatin1Char(' ') + operatorSymbol(op)
+                         + QLatin1Char(' ') + rhsText + QStringLiteral(" ="));
+        return;
+    }
+
+    updateExpression(lhsText + QLatin1Char(' ') + operatorSymbol(op)
                      + QLatin1Char(' ') + rhsText + QStringLiteral(" ="));
     m_display = formatNumber(result);
-    m_operand = m_display;
+    m_operand = m_display;   // 结果可以继续参与下一次运算
     m_pendingOp.clear();
-    m_isNewInput = true;
+    m_isNewInput = true;     // 计算结果后直接按数字，会开始一次新的输入
 }
 
 void CalculatorWindow::backspace()
 {
-    if (m_isNewInput) {
-        return; // 刚按完运算符，显示区还不是用户输入的数
+    if (m_errorState) {
+        clearAll();
+        return;
     }
+    if (m_isNewInput) {
+        return; // 刚按完运算符，显示区还不是用户正在输入的数
+    }
+
     m_display.chop(1);
-    if (m_display.isEmpty()) {
+    if (m_display.isEmpty() || m_display == QLatin1String("-")) {
         m_display = QStringLiteral("0");
         m_isNewInput = true;
     }
@@ -163,7 +211,28 @@ void CalculatorWindow::clearAll()
     m_operand.clear();
     m_pendingOp.clear();
     m_isNewInput = true;
+    m_errorState = false;
     updateExpression(QString());
+}
+
+bool CalculatorWindow::compute(double lhs, double rhs, const QString &op, double *result)
+{
+    if (op == QLatin1String("/") && qFuzzyIsNull(rhs)) {
+        enterErrorState();
+        return false;
+    }
+    *result = applyOperator(op, lhs, rhs);
+    return true;
+}
+
+void CalculatorWindow::enterErrorState()
+{
+    // 除数为零：显示提示并锁住后续运算，直到用户按 C 或直接输入新数字
+    m_errorState = true;
+    m_display = QStringLiteral("除数不能为零");
+    m_operand.clear();
+    m_pendingOp.clear();
+    m_isNewInput = true;
 }
 
 double CalculatorWindow::currentValue() const
