@@ -1,0 +1,13 @@
+# 构建产物
+build/
+build-*/
+*.o
+*.obj
+*.exe
+*.dll
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+*.user
+CMakeCache.txt
+CMakeFiles/
