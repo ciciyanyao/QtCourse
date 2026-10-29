@@ -1,10 +1,12 @@
 #ifndef CALCULATORWINDOW_H
 #define CALCULATORWINDOW_H
 
+#include <QHash>
 #include <QString>
 #include <QWidget>
 
 class QKeyEvent;
+class QPushButton;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -16,8 +18,10 @@ QT_END_NAMESPACE
  * 计算器主窗口。
  *
  * 设计要点：
- *  1. 鼠标与键盘不各写一套逻辑：所有入口最终都转成同一个按键字符串 key，
- *     交给 handleKey() 处理（clear / back / 数字 / dot / 运算符 / = 等）。
+ *  1. 鼠标与键盘不各写一套逻辑：每个按钮都用动态属性 calcKey 标明"我是哪个键"，
+ *     键盘事件先翻译成同样的 calcKey，再用 animateClick() 去点对应按钮，
+ *     于是两条路径最终都汇到 clicked -> onButtonClicked -> handleKey 这一处。
+ *     附带好处：键盘操作时按钮同样有按下的动画反馈。
  *  2. 交互状态用四个成员描述：
  *       m_operand    —— 已锁定的第一个操作数
  *       m_pendingOp  —— 待执行的运算符（空表示没有待运算）
@@ -49,10 +53,12 @@ private:
     void backspace();
     void negate();
     void percent();
+    void applyUnary(const QString &op);
+    void clearEntry();
     void clearAll();
 
     bool compute(double lhs, double rhs, const QString &op, double *result);
-    void enterErrorState();
+    void enterErrorState(const QString &message = QStringLiteral("除数不能为零"));
     double currentValue() const;
     static double applyOperator(const QString &op, double lhs, double rhs);
 
@@ -60,6 +66,7 @@ private:
     void updateExpression(const QString &text);
 
     Ui::CalculatorWindow *ui;
+    QHash<QString, QPushButton *> m_keyButtons;  // calcKey -> 对应按钮，供键盘事件回查
 
     QString m_display;      // 显示区当前文本
     QString m_operand;      // 第一个操作数（字符串形式，便于原样显示）
