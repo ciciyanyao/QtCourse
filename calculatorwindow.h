@@ -4,6 +4,8 @@
 #include <QString>
 #include <QWidget>
 
+class QKeyEvent;
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class CalculatorWindow;
@@ -30,11 +32,15 @@ public:
     explicit CalculatorWindow(QWidget *parent = nullptr);
     ~CalculatorWindow() override;
 
+protected:
+    void keyPressEvent(QKeyEvent *event) override;
+
 private slots:
     void onButtonClicked();
 
 private:
     void handleKey(const QString &key);
+    static QString keyToCalcKey(QKeyEvent *event);
 
     void inputDigit(const QString &digit);
     void inputDot();

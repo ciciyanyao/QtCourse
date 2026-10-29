@@ -1,6 +1,7 @@
 #include "calculatorwindow.h"
 #include "ui_calculatorwindow.h"
 
+#include <QKeyEvent>
 #include <QPushButton>
 
 namespace {
@@ -50,6 +51,10 @@ CalculatorWindow::CalculatorWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    // 窗口本身获得焦点，按键事件才会送进 keyPressEvent（界面上的按钮都是 NoFocus）
+    setFocusPolicy(Qt::StrongFocus);
+    setFocus();
+
     // 所有按钮连到同一个槽，用 calcKey 属性区分是哪个键
     const auto buttons = findChildren<QPushButton *>();
     for (QPushButton *button : buttons) {
@@ -71,6 +76,57 @@ void CalculatorWindow::onButtonClicked()
         return;
     }
     handleKey(button->property("calcKey").toString());
+}
+
+void CalculatorWindow::keyPressEvent(QKeyEvent *event)
+{
+    const QString key = keyToCalcKey(event);
+    if (key.isEmpty()) {
+        QWidget::keyPressEvent(event); // 不认识的键交回父类，避免吞掉系统快捷键
+        return;
+    }
+    handleKey(key);
+    event->accept();
+}
+
+/**
+ * 把键盘按键翻译成与按钮 calcKey 完全相同的字符串。
+ * 鼠标走 handleKey(button->calcKey)，键盘走 keyPressEvent -> keyToCalcKey -> handleKey，
+ * 两条路径在这里汇合，因此不存在"鼠标一套逻辑、键盘另一套逻辑"的问题。
+ */
+QString CalculatorWindow::keyToCalcKey(QKeyEvent *event)
+{
+    const int key = event->key();
+    if (key >= Qt::Key_0 && key <= Qt::Key_9) {
+        return QString(QChar(QLatin1Char('0').unicode() + (key - Qt::Key_0)));
+    }
+
+    switch (key) {
+    case Qt::Key_Period:
+    case Qt::Key_Comma:
+        return QStringLiteral("dot");
+    case Qt::Key_Plus:
+        return QStringLiteral("+");
+    case Qt::Key_Minus:
+        return QStringLiteral("-");
+    case Qt::Key_Asterisk:
+    case Qt::Key_X: // 键盘上常用 x 代表乘号
+        return QStringLiteral("*");
+    case Qt::Key_Slash:
+        return QStringLiteral("/");
+    case Qt::Key_Return:
+    case Qt::Key_Enter:
+    case Qt::Key_Equal:
+        return QStringLiteral("=");
+    case Qt::Key_Backspace:
+        return QStringLiteral("back");
+    case Qt::Key_Escape:
+    case Qt::Key_Delete:
+    case Qt::Key_C:
+        return QStringLiteral("clear");
+    default:
+        return QString();
+    }
 }
 
 void CalculatorWindow::handleKey(const QString &key)
