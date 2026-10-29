@@ -47,6 +47,8 @@ private:
     void inputOperator(const QString &op);
     void evaluate();
     void backspace();
+    void negate();
+    void percent();
     void clearAll();
 
     bool compute(double lhs, double rhs, const QString &op, double *result);

@@ -124,6 +124,8 @@ QString CalculatorWindow::keyToCalcKey(QKeyEvent *event)
     case Qt::Key_Delete:
     case Qt::Key_C:
         return QStringLiteral("clear");
+    case Qt::Key_Percent:
+        return QStringLiteral("percent");
     default:
         return QString();
     }
@@ -139,6 +141,10 @@ void CalculatorWindow::handleKey(const QString &key)
         inputDot();
     } else if (key == QLatin1String("=")) {
         evaluate();
+    } else if (key == QLatin1String("neg")) {
+        negate();
+    } else if (key == QLatin1String("percent")) {
+        percent();
     } else if (key == QLatin1String("+") || key == QLatin1String("-")
                || key == QLatin1String("*") || key == QLatin1String("/")) {
         inputOperator(key);
@@ -259,6 +265,36 @@ void CalculatorWindow::backspace()
         m_display = QStringLiteral("0");
         m_isNewInput = true;
     }
+}
+
+void CalculatorWindow::negate()
+{
+    if (m_errorState || m_display == QLatin1String("0")) {
+        return;
+    }
+    // 取反只是文本层面的正负号切换，不影响已经锁定的操作数和运算符
+    if (m_display.startsWith(QLatin1Char('-'))) {
+        m_display.remove(0, 1);
+    } else if (m_display.size() < kMaxDigits + 1) {
+        m_display.prepend(QLatin1Char('-'));
+    }
+    m_isNewInput = false;
+}
+
+void CalculatorWindow::percent()
+{
+    if (m_errorState) {
+        return;
+    }
+    // 百分号语义与常见计算器一致：
+    //   100 + 10%  -> 100 + 10（即 100 的 10%）= 110
+    //   100 × 10%  -> 100 × 0.1 = 10
+    double value = currentValue() / 100.0;
+    if (m_pendingOp == QLatin1String("+") || m_pendingOp == QLatin1String("-")) {
+        value = m_operand.toDouble() * currentValue() / 100.0;
+    }
+    m_display = formatNumber(value);
+    m_isNewInput = true;
 }
 
 void CalculatorWindow::clearAll()
