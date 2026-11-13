@@ -1,0 +1,23 @@
+# 构建产物
+build/
+build-*/
+CMakeCache.txt
+CMakeFiles/
+*.o
+*.obj
+*.exe
+*.dll
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+*.user
+*.autosave
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+
+# 自动保存的临时文本（不纳入版本库）
+*.tmp.txt
